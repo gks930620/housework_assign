@@ -34,3 +34,5 @@ file:
     path: C:\workspace\upload_folder   #로컬경로   환경변수로 하던가 하자.
 
 
+jwt:
+  secret: my-super-secure-secret-key
