@@ -1,6 +1,7 @@
 package com.housework.user;
 
-import com.housework.auth.dto.KakaoUserDto;
+import com.housework.auth.google.GoogleUserDto;
+import com.housework.auth.kakao.KakaoUserDto;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,10 +27,25 @@ public class UserService {
                 }).getId();
     }
 
+    public User findOrCreateUserByGoogle(GoogleUserDto googleUserDto) {
+        return userRepository.findByGoogleId(googleUserDto.getSub())
+            .orElseGet(() -> {
+                User newUser = User.builder()
+                    .provider("google")
+                    .username("google" + googleUserDto.getSub())
+                    .email(googleUserDto.getEmail())
+                    .nickname(googleUserDto.getName())
+                    .build();
+                return userRepository.save(newUser);
+            });
+    }
 
-    public void compareRefreshToken(Long userId,String refreshToken ){
-         userRepository.findById(userId)
-            .filter(u -> refreshToken.equals(u.getRefreshToken()))  //현재 DB랑 비교해야  내가 가지고 있는 refresh토큰이 맞늦지 확인
+
+
+    public void compareRefreshToken(Long userId, String refreshToken) {
+        userRepository.findById(userId)
+            .filter(u -> refreshToken.equals(
+                u.getRefreshToken()))  //현재 DB랑 비교해야  내가 가지고 있는 refresh토큰이 맞늦지 확인
             .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
     }
 
@@ -38,4 +54,11 @@ public class UserService {
         userRepository.findById(id)
             .ifPresent(user -> user.setRefreshToken(newRefreshToken));
     }
+
+
+
+
+
+
+
 }

@@ -1,4 +1,4 @@
-package com.housework.auth.dto;
+package com.housework.auth;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

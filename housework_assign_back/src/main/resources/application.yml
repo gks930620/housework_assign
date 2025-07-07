@@ -24,6 +24,25 @@ spring:
   thymeleaf:
     cache: false
 
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: [ 복사한 client-id ]
+            client-secret: [ 복사한 client-secret ]
+            scope:
+              - email
+              - profile
+            redirect-uri: "{baseUrl}/oauth2/callback/google"
+        provider:
+          google:
+            authorization-uri: https://accounts.google.com/o/oauth2/v2/auth
+            token-uri: https://oauth2.googleapis.com/token
+            user-info-uri: https://www.googleapis.com/oauth2/v3/userinfo
+            user-name-attribute: sub
+
+
 logging:
   level:
     org.hibernate.SQL: debug
@@ -35,4 +54,15 @@ file:
 
 
 jwt:
-  secret: my-super-secure-secret-key
+  secret: "k9D$w0t7vO@R3fAq%zX#8G1!bT6pLq@VnYcJ2r#U5xM8aW!e"
+
+
+
+
+
+
+
+
+
+
+
