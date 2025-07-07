@@ -4,7 +4,6 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
-
   jpa:
     hibernate:
       ddl-auto: create-drop     # 테스트 끝나면 자동 삭제되게
@@ -23,9 +22,7 @@ logging:
     org.hibernate.SQL: debug
     org.hibernate.type: trace
 
-file:
-  upload:
-    path: C:\workspace\test_upload_folder    # 테스트 전용 업로드 경로
 
-# 아래는 테스트에 불필요하므로 생략하거나 비워둠
-# devtools 설정 등은 테스트에 영향 없음
+
+jwt:
+  secret: "test-k9D$w0t7vO@R3fAq%zX#8G1!bT6pLq@VnYcJ2r#U5xM8aW!e"

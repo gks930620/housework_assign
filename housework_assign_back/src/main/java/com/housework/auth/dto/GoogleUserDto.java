@@ -1,4 +1,4 @@
-package com.housework.auth.google;
+package com.housework.auth.dto;
 
 import lombok.*;
 

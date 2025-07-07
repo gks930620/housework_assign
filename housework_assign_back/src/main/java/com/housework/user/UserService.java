@@ -1,10 +1,11 @@
 package com.housework.user;
 
-import com.housework.auth.google.GoogleUserDto;
-import com.housework.auth.kakao.KakaoUserDto;
-import java.time.LocalDateTime;
+import com.housework.auth.OAuth2Provider;
+import com.housework.user.dto.UserDto;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -12,53 +13,33 @@ public class UserService {
 
     private final UserRepository userRepository;
 
-    public Long createUserIfNotPresentByKakaoId(KakaoUserDto kakaoUserDto) {
-        return userRepository.findByUsername("kakao"+kakaoUserDto.getId())
+
+    @Transactional(readOnly = false)
+    public Long saveUserFromOauth2(String accessToken, String provider) {
+            OAuth2Provider oAuth2Provider = OAuth2Provider.from(provider);
+            UserDto userDto =oAuth2Provider.getUserFromAccessToken(accessToken);
+            return userRepository.findByUsername(userDto.getUsername())
                 .orElseGet(() -> {
                     // 신규 사용자 저장
-                    User newUser = User.builder()
-                        .provider("kakao")
-                            .username("kakao" + kakaoUserDto.getId())
-                            .nickname(kakaoUserDto.getNickname())
-                            .email(kakaoUserDto.getEmail())
-                            .joinedAt(LocalDateTime.now())
-                            .build();
+                    User newUser= User.fromDto(userDto);
                     return userRepository.save(newUser);
                 }).getId();
     }
 
-    public User findOrCreateUserByGoogle(GoogleUserDto googleUserDto) {
-        return userRepository.findByGoogleId(googleUserDto.getSub())
-            .orElseGet(() -> {
-                User newUser = User.builder()
-                    .provider("google")
-                    .username("google" + googleUserDto.getSub())
-                    .email(googleUserDto.getEmail())
-                    .nickname(googleUserDto.getName())
-                    .build();
-                return userRepository.save(newUser);
-            });
+
+
+    @Transactional(readOnly = false)
+    public boolean compareRefreshToken(Long userId, String refreshToken) {
+        User user = userRepository.findById(userId).orElseThrow(EntityNotFoundException::new);
+        return user.getRefreshToken().equals(refreshToken);
     }
 
 
-
-    public void compareRefreshToken(Long userId, String refreshToken) {
-        userRepository.findById(userId)
-            .filter(u -> refreshToken.equals(
-                u.getRefreshToken()))  //현재 DB랑 비교해야  내가 가지고 있는 refresh토큰이 맞늦지 확인
-            .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
-    }
-
-
-    public void changeRefreshToken(Long id,String newRefreshToken) {
+    @Transactional(readOnly = false)
+    public void changeRefreshToken(Long id, String newRefreshToken) {
         userRepository.findById(id)
             .ifPresent(user -> user.setRefreshToken(newRefreshToken));
     }
-
-
-
-
-
 
 
 }

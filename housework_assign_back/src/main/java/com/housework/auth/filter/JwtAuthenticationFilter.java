@@ -1,6 +1,8 @@
 package com.housework.auth.filter;
 
+import com.housework.auth.dto.CustomUserDetails;
 import com.housework.auth.jwt.JwtTokenProvider;
+import com.housework.user.dto.UserDto;
 import com.housework.user.UserRepository;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -36,8 +38,11 @@ public class JwtAuthenticationFilter implements Filter {
 
                 userRepository.findById(userId).ifPresent(user -> {
                     // 사용자 정보 → Spring Security에 등록
+                    UserDto userDto = UserDto.fromUser(user);
+                    CustomUserDetails userDetails = new CustomUserDetails(userDto);
+
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(user, null, null);
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                     //여기에 세팅했으면 이후 id,pw검사안함.

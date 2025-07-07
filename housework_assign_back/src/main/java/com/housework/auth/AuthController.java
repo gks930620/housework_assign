@@ -1,15 +1,19 @@
 package com.housework.auth;
 
-import com.housework.auth.google.GoogleAuthService;
-import com.housework.auth.google.GoogleUserDto;
+import com.housework.auth.dto.JwtLoginResponse;
 import com.housework.auth.jwt.JwtTokenProvider;
-import com.housework.auth.kakao.KakaoAuthService;
-import com.housework.auth.kakao.KakaoUserDto;
-import com.housework.user.User;
 import com.housework.user.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,73 +22,69 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
+@Tag(name = "인증", description = "카카오/구글 로그인 및 토큰 재발급 API")
 public class AuthController {
 
-    private final KakaoAuthService kakaoAuthService;
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
-    private final GoogleAuthService googleAuthService;
 
+    @Operation(
+        summary = "OAuth2 로그인 (카카오/구글)",
+        description = "사용자로부터 받은 access token(카카오/구글 로그인용)을 이용해  카카오/구글 리소스서버로부터 사용자 정보를 받아 JWT를 발급합니다."
+    )
+    @ApiResponses(value = {
 
-    //첫 로그인 -> accessToken을 받아서 카카오 '리소스'서버 접근 
-    @PostMapping("/kakao/token-login")
-    public ResponseEntity<JwtLoginResponse> kakaoLogin(@RequestBody String  accessToken) {
-        // 1. access_token → 카카오 사용자 정보 조회
-        KakaoUserDto kakaoUser = kakaoAuthService.getUserInfo(accessToken);
-        // 2. 우리 서비스 User 조회.  없으면 저장
-        Long userId = userService.createUserIfNotPresentByKakaoId(kakaoUser);
-        // 토큰 2종 생성
+    })
+    @ApiResponse(
+        responseCode = "200",
+        description = "JWT 토큰 발급 성공",
+        content = @Content(schema = @Schema(implementation = JwtLoginResponse.class))
+    )
+    @PostMapping("/token-login/{provider}")
+    public ResponseEntity<JwtLoginResponse> kakaoLogin(
+        @RequestBody @Parameter(description = "OAuth2 Access Token") String accessToken,
+        @PathVariable("provider") @Parameter(description = "Provider 이름 (kakao 또는 google)") String provider
+    ) {
+        Long userId = userService.saveUserFromOauth2(accessToken, provider);
+
         String newAccessToken = jwtTokenProvider.generateAccessToken(userId);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
-        // 4. 응답
-        return ResponseEntity.ok(new JwtLoginResponse(newAccessToken,newRefreshToken));
-    }
-
-
-    @PostMapping("/google/token-login")
-    public ResponseEntity<JwtLoginResponse> googleLogin(@RequestBody String  accessToken) {
-        // 1. access_token → 구글 사용자 정보 조회
-        GoogleUserDto googleUser = googleAuthService.getUserInfo(accessToken);
-
-        // 2. 사용자 등록 또는 조회
-        User user = userService.findOrCreateUserByGoogle(googleUser);
-
-        // 3. 토큰 발급
-        String newAccessToken = jwtTokenProvider.generateAccessToken(user.getId());
-        String newRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
-
-        // 4. 응답
         return ResponseEntity.ok(new JwtLoginResponse(newAccessToken, newRefreshToken));
     }
 
-
-
+    @Operation(
+        summary = "Access Token 재발급",
+        description = "만료된 Access Token을 Refresh Token으로 재발급합니다."
+    )
+    @ApiResponses(
+        value = {
+            @ApiResponse(
+                responseCode = "200",
+                description = "재발급 성공",
+                content = @Content(schema = @Schema(implementation = JwtLoginResponse.class))
+            ),
+            @ApiResponse(responseCode = "401", description = "Refresh Token 유효성 실패" ,  content = @Content())
+        }
+    )
     @PostMapping("/reissue")
-    public ResponseEntity<JwtLoginResponse> reissueToken(@RequestBody String refreshToken) {
-        // 1. refreshToken 유효성 검사
+    public ResponseEntity<JwtLoginResponse> reissueToken(
+        @RequestBody @Parameter(description = "Refresh Token") String refreshToken
+    ) {
         if (!jwtTokenProvider.validateToken(refreshToken)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build(); // 401 Unauthorized
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // 2. 토큰에서 사용자 ID 추출
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-        // 3. 사용자 조회 + 현재 저장된 refreshToken과 비교
-        userService.compareRefreshToken(userId,refreshToken);
-        //다르면 에러.  에러보내는게 맞음. 보내고 끝!
+        boolean valid = userService.compareRefreshToken(userId, refreshToken);
+        if (valid) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        // 4. 새 accessToken 및 refreshToken 생성 (회전 전략)
         String newAccessToken = jwtTokenProvider.generateAccessToken(userId);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(userId);
+        userService.changeRefreshToken(userId, newRefreshToken);
 
-
-        // 5. 사용자 엔티티에 새 refreshToken 저장 (기존 것은 폐기됨)
-        userService.changeRefreshToken(userId,newRefreshToken);
-
-        // 6. 응답 반환
         return ResponseEntity.ok(new JwtLoginResponse(newAccessToken, newRefreshToken));
     }
-
-
-
 }
