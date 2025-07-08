@@ -1,5 +1,8 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.changhee.housework_assign">
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
+        android:usesCleartextTraffic="true"> <!-- HTTP 통신 허용 시 -->
         android:label="untitled"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
