@@ -24,6 +24,8 @@ spring:
   thymeleaf:
     cache: false
 
+
+
 logging:
   level:
     org.hibernate.SQL: debug
@@ -32,5 +34,18 @@ logging:
 file:
   upload:
     path: C:\workspace\upload_folder   #로컬경로   환경변수로 하던가 하자.
+
+
+jwt:
+  secret: "k9D$w0t7vO@R3fAq%zX#8G1!bT6pLq@VnYcJ2r#U5xM8aW!e"
+
+
+
+
+
+
+
+
+
 
 
